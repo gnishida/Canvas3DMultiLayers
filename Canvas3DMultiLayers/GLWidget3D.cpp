@@ -467,6 +467,9 @@ void GLWidget3D::open(const QString& filename) {
 	// no currently drawing shape
 	current_shape.reset();
 
+	// update the layer menu based on the loaded data
+	mainWin->initLayerMenu(layers.size());
+
 	update();
 }
 
@@ -514,8 +517,10 @@ double GLWidget3D::scale() {
 void GLWidget3D::update3DGeometry() {
 	renderManager.removeObjects();
 	for (int i = 0; i < layers[layer_id].shapes.size(); i++) {
-		QString obj_name = QString("object_%1").arg(i);
-		renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
+		if (layers[layer_id].shapes[i]->getSubType() == canvas::Shape::TYPE_BODY) {
+			QString obj_name = QString("object_%1").arg(i);
+			renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
+		}
 	}
 
 	// update shadow map
@@ -853,13 +858,15 @@ void GLWidget3D::mouseMoveEvent(QMouseEvent *e) {
 			if (layers[layer_id].shapes[i]->isSelected()) {
 				layers[layer_id].shapes[i]->translate(dir);
 
-				// update 3D geometry
-				QString obj_name = QString("object_%1").arg(i);
-				renderManager.removeObject(obj_name);
-				renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
+				if (layers[layer_id].shapes[i]->getSubType() == canvas::Shape::TYPE_BODY) {
+					// update 3D geometry
+					QString obj_name = QString("object_%1").arg(i);
+					renderManager.removeObject(obj_name);
+					renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
 
-				// update shadow map
-				renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+					// update shadow map
+					renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+				}
 			}
 		}
 		op->pivot = screenToWorldCoordinates(e->x(), e->y());
@@ -874,13 +881,15 @@ void GLWidget3D::mouseMoveEvent(QMouseEvent *e) {
 			if (layers[layer_id].shapes[i]->isSelected()) {
 				layers[layer_id].shapes[i]->rotate(theta);
 
-				// update 3D geometry
-				QString obj_name = QString("object_%1").arg(i);
-				renderManager.removeObject(obj_name);
-				renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
+				if (layers[layer_id].shapes[i]->getSubType() == canvas::Shape::TYPE_BODY) {
+					// update 3D geometry
+					QString obj_name = QString("object_%1").arg(i);
+					renderManager.removeObject(obj_name);
+					renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
 
-				// update shadow map
-				renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+					// update shadow map
+					renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+				}
 			}
 		}
 		op->pivot = screenToWorldCoordinates(e->x(), e->y());
@@ -894,15 +903,20 @@ void GLWidget3D::mouseMoveEvent(QMouseEvent *e) {
 		glm::dvec2 resize_scale(dir2.x / dir1.x, dir2.y / dir1.y);
 		for (int i = 0; i < layers[layer_id].shapes.size(); ++i) {
 			if (layers[layer_id].shapes[i]->isSelected()) {
-				layers[layer_id].shapes[i]->resize(resize_scale, resize_center);
+				// resize the shape for all the layers in order to make the size of the shape the same across the layers
+				for (int l = 0; l < layers.size(); l++) {
+					layers[l].shapes[i]->resize(resize_scale, resize_center);
+				}
 
-				// update 3D geometry
-				QString obj_name = QString("object_%1").arg(i);
-				renderManager.removeObject(obj_name);
-				renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
+				if (layers[layer_id].shapes[i]->getSubType() == canvas::Shape::TYPE_BODY) {
+					// update 3D geometry
+					QString obj_name = QString("object_%1").arg(i);
+					renderManager.removeObject(obj_name);
+					renderManager.addObject(obj_name, "", layers[layer_id].shapes[i]->getVertices(), true);
 
-				// update shadow map
-				renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+					// update shadow map
+					renderManager.updateShadowMap(this, light_dir, light_mvpMatrix);
+				}
 			}
 		}
 		op->pivot = screenToWorldCoordinates(e->x(), e->y());
@@ -934,15 +948,17 @@ void GLWidget3D::mouseReleaseEvent(QMouseEvent *e) {
 		mode = MODE_SELECT;
 	}
 	else if (e->button() == Qt::RightButton) {
-		if (abs(camera.xrot) < 20 && abs(camera.yrot) < 20) {
+		//if (abs(camera.xrot) < 20 && abs(camera.yrot) < 20) {
 			camera.xrot = 0;
 			camera.yrot = 0;
 			camera.updateMVPMatrix();
 			front_faced = true;
+		/*
 		}
 		else {
 			front_faced = false;
 		}
+		*/
 	}
 
 	update();
